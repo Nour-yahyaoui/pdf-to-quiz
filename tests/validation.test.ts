@@ -35,7 +35,8 @@ describe("validation schemas", () => {
     ).toBe(false);
   });
 
-  it("keeps the PDF limit at exactly 5 MB", () => {
-    expect(MAX_PDF_BYTES).toBe(5 * 1024 * 1024);
+  it("keeps the PDF limit under Vercel's 4.5 MB request body cap", () => {
+    expect(MAX_PDF_BYTES).toBe(Math.floor(4.5 * 1024 * 1024));
+    expect(MAX_PDF_BYTES).toBeLessThan(4.5 * 1024 * 1024 + 1);
   });
 });

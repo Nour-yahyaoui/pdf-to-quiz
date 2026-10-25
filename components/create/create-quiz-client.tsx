@@ -43,7 +43,7 @@ export function CreateQuizClient() {
       return;
     }
     if (next.size > MAX_PDF_BYTES) {
-      setFileError("File too large. Maximum size is 5MB.");
+      setFileError("File too large. Maximum size is 4.5MB.");
       setFile(next);
       return;
     }
@@ -73,7 +73,7 @@ export function CreateQuizClient() {
     setInlineError(null);
 
     if (file.size > MAX_PDF_BYTES) {
-      setFileError("File too large. Maximum size is 5MB.");
+      setFileError("File too large. Maximum size is 4.5MB.");
       return;
     }
 
@@ -102,8 +102,20 @@ export function CreateQuizClient() {
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        const message =
-          data?.error?.message ?? "Quiz generation failed. Please try again.";
+        // Our API always answers with a JSON error contract. A missing body
+        // means the platform itself failed: a 504 function timeout or an HTML
+        // error page, which deserve their own explanation instead of a
+        // duplicated generic title.
+        let message: string;
+        if (data?.error?.message) {
+          message = data.error.message;
+        } else if (res.status === 504) {
+          message =
+            "Generation timed out on the server. The AI model may be busy — please try again.";
+        } else {
+          message =
+            "The server returned an unexpected response. Please try again in a moment.";
+        }
         const retryable = res.status === 429 || res.status >= 500;
         setInlineError({ message, retryable });
         return;

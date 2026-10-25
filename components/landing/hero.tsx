@@ -14,7 +14,8 @@ export function Hero() {
             Turn any PDF into a quiz in under 5 seconds
           </h1>
           <p className="mt-6 max-w-measure text-body text-mute">
-            Upload lecture notes, a research paper or any document up to 5&nbsp;MB.
+            Upload lecture notes, a research paper or any document up to
+            4.5&nbsp;MB.
             The reader extracts the text, the model writes ten multiple-choice
             questions, and you get a marked exam sheet with explanations — saved
             without any account.

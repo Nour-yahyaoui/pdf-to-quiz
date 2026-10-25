@@ -5,7 +5,7 @@ import { Check } from "lucide-react";
  * exactly what the product does — real data, no invented statistics.
  */
 const SPEC_ROWS = [
-  ["Input", "One PDF, max 5 MB, parsed entirely in server memory"],
+  ["Input", "One PDF, max 4.5 MB, parsed entirely in server memory"],
   ["Output", "10 multiple-choice questions, 4 options each"],
   ["Difficulty", "Easy, medium or hard — chosen before generation"],
   ["Model", "Llama 3.3 70B Versatile on Groq, instant fallback model"],

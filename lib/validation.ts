@@ -10,7 +10,9 @@ export const DIFFICULTIES: readonly Difficulty[] = ["easy", "medium", "hard"];
 
 export const difficultySchema = z.enum(DIFFICULTIES);
 
-export const MAX_PDF_BYTES = 5 * 1024 * 1024; // 5 MB, enforced client AND server
+// Vercel rejects request bodies over 4.5 MB with a platform HTML error, so
+// the app cap stays just under that to keep every rejection a JSON response.
+export const MAX_PDF_BYTES = Math.floor(4.5 * 1024 * 1024); // 4.5 MB, client AND server
 
 export const submitQuizSchema = z
   .object({

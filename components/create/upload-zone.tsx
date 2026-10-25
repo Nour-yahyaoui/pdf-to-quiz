@@ -86,7 +86,7 @@ export function UploadZone({ file, onSelect, onClear, error, disabled }: UploadZ
         </div>
         {tooLarge && (
           <p role="alert" className="mt-4 text-sm text-danger">
-            File too large. Maximum size is 5MB.
+            File too large. Maximum size is 4.5MB.
           </p>
         )}
       </div>
@@ -124,7 +124,7 @@ export function UploadZone({ file, onSelect, onClear, error, disabled }: UploadZ
         <span className="text-accent underline underline-offset-4">browse files</span>
       </p>
       <p className="mt-2 font-mono text-label uppercase text-mute">
-        PDF only · maximum 5MB · processed in memory
+        PDF only · maximum 4.5MB · processed in memory
       </p>
       <input
         ref={inputRef}
