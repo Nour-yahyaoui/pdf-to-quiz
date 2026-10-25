@@ -27,8 +27,9 @@ enumerates other quizzes.
 
 - `zod` validates every request body and the model's JSON output; strict
   objects reject unknown fields; strings and arrays are bounded.
-- PDF uploads are checked twice (client and server): extension, 5 MB cap, and
-  the `%PDF` magic bytes.
+- PDF uploads are checked twice (client and server): extension, 4.5 MB cap, and
+  the `%PDF` magic bytes. The cap sits under Vercel's 4.5 MB request body
+  limit so every rejection stays a JSON response rather than a platform error.
 - Anonymous, IP-based rate limits: generation 8/minute and 30/hour,
   submission 30/minute. In-memory windows are defense-in-depth across a single
   serverless instance; the platform WAF is the shared-instance layer.

@@ -80,9 +80,9 @@ async function handlePost(request: Request, correlationId: string) {
   if (file.size === 0) {
     return apiError("VALIDATION_ERROR", "The uploaded file is empty.", correlationId);
   }
-  // Server-side 5 MB enforcement — the client check is convenience, not trust.
+  // Server-side 4.5 MB enforcement — the client check is convenience, not trust.
   if (file.size > MAX_PDF_BYTES) {
-    return apiError("FILE_TOO_LARGE", "File too large. Maximum size is 5MB.", correlationId);
+    return apiError("FILE_TOO_LARGE", "File too large. Maximum size is 4.5MB.", correlationId);
   }
 
   const bytes = new Uint8Array(await file.arrayBuffer());

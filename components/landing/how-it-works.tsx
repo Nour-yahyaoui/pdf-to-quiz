@@ -5,7 +5,7 @@ const STEPS = [
     icon: FileUp,
     number: "01",
     title: "Drop in a PDF",
-    body: "Drag and drop any PDF up to 5 MB directly in the browser. The file is parsed in memory and discarded — it is never written to storage.",
+    body: "Drag and drop any PDF up to 4.5 MB directly in the browser. The file is parsed in memory and discarded — it is never written to storage.",
   },
   {
     icon: BrainCircuit,

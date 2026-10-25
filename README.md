@@ -2,7 +2,7 @@
 
 **Live:** https://pdf-to-quiz-neon.vercel.app
 
-Upload a PDF (max 5 MB) and get a ten-question multiple-choice quiz in seconds —
+Upload a PDF (max 4.5 MB) and get a ten-question multiple-choice quiz in seconds —
 **no account or sign-up required**. The document is parsed in memory, Groq's
 `llama-3.3-70b-versatile` writes the questions, and quizzes are reachable via
 unique links and remembered in the visitor's own browser.
