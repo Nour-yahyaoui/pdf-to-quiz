@@ -42,8 +42,9 @@ enumerates other quizzes.
 - Model output is treated as untrusted: parsed defensively (fence-stripping,
   bare-array support), schema-validated, retried once with a stricter prompt,
   then either accepted or failed with a typed error. It is never rendered as HTML.
-- 45 s `AbortController` timeout; rate-limit/timeout fallback to
-  `llama-3.1-8b-instant`; prompts are versioned in `lib/groq/prompts.ts`.
+- 20 s per-call `AbortController` timeout inside a 50 s overall generation
+  budget; rate-limit/timeout fallback to `openai/gpt-oss-20b`; prompts are
+  versioned in `lib/groq/prompts.ts`.
 - Groq failures are classified (`lib/groq/errors.ts`, unit-tested) into
   token-per-minute, request-per-minute, daily-quota, bad-key and timeout cases,
   each with an accurate user message and a `Retry-After` header where provided.

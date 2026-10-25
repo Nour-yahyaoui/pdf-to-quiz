@@ -72,9 +72,9 @@ async function callModel({ model, text, difficulty, strict, signal }: CallOption
 
 /**
  * Generation policy for the Groq free tier:
- *  attempt 1  primary model (70B), normal prompt
+ *  attempt 1  primary model (gpt-oss-120b), normal prompt
  *  attempt 2  primary model, strict prompt (only when the JSON was malformed)
- *  attempt 3  fallback model (8B instant — separate, higher TPM allowance)
+ *  attempt 3  fallback model (gpt-oss-20b — separate, higher TPM allowance)
  *  - 429 on the primary → short backoff, then fallback model
  *  - timeout on the primary → fallback model immediately
  *  - 429 on the fallback → precise RATE_LIMITED error (token vs request vs quota)

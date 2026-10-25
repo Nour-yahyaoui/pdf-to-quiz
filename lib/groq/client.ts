@@ -14,5 +14,9 @@ export function getGroqClient(): Groq {
   return client;
 }
 
-export const PRIMARY_MODEL = "llama-3.3-70b-versatile";
-export const FALLBACK_MODEL = "llama-3.1-8b-instant";
+// Groq retired llama-3.3-70b-versatile and llama-3.1-8b-instant for free and
+// developer keys on 2026-08-16. gpt-oss-120b is Groq's recommended 70B-class
+// replacement; gpt-oss-20b replaces the 8B instant model and keeps its own,
+// higher rate-limit allowance for fallback traffic.
+export const PRIMARY_MODEL = "openai/gpt-oss-120b";
+export const FALLBACK_MODEL = "openai/gpt-oss-20b";
