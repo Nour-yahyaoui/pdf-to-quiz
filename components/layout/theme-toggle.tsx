@@ -1,16 +1,26 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+
+const emptySubscribe = () => () => {};
+
+/**
+ * Client-only flag without setState-in-effect: server snapshot is false,
+ * client snapshot is true, which also prevents hydration mismatches.
+ */
+function useIsMounted() {
+  return useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  );
+}
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  // Avoid hydration mismatch — theme is unknown until mounted on the client.
-  useEffect(() => setMounted(true), []);
-
+  const mounted = useIsMounted();
   const isDark = resolvedTheme === "dark";
 
   return (
