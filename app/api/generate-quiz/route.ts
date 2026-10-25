@@ -10,51 +10,35 @@ import type { ApiErrorCode } from "@/lib/types";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-// Per-user generation guard (in-process; the DB quota below is the shared one).
+// Anonymous IP-based guards (no accounts). In-memory windows are
+// defense-in-depth; Vercel/WAF limits provide the shared-instance layer.
 const PER_MINUTE_LIMIT = 8;
-// Hard daily cap protecting the Groq free-tier budget (api-abuse-defense skill).
-const DAILY_QUOTA = 20;
+const PER_HOUR_LIMIT = 30;
 
 export async function POST(request: Request) {
   const correlationId = newCorrelationId();
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return apiError("UNAUTHENTICATED", "Sign in to generate a quiz.", correlationId);
-  }
-
   const ip = getClientIp(request.headers);
-  const limit = rateLimit(
-    `generate:${user.id}:${ip}`,
-    PER_MINUTE_LIMIT,
-    60 * 1000,
-  );
-  if (!limit.allowed) {
+
+  const minute = rateLimit(`generate:min:${ip}`, PER_MINUTE_LIMIT, 60 * 1000);
+  if (!minute.allowed) {
     return apiError(
       "RATE_LIMITED",
       "Too many requests, try again in 30 seconds.",
       correlationId,
+      minute.retryAfterSeconds,
     );
   }
-
-  // Shared, durable daily quota: count today's quizzes for this user.
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
-  const { count: todayCount } = await supabase
-    .from("quizzes")
-    .select("id", { count: "exact", head: true })
-    .gte("created_at", startOfDay.toISOString());
-
-  if ((todayCount ?? 0) >= DAILY_QUOTA) {
+  const hour = rateLimit(`generate:hour:${ip}`, PER_HOUR_LIMIT, 60 * 60 * 1000);
+  if (!hour.allowed) {
     return apiError(
       "RATE_LIMITED",
-      `Daily limit of ${DAILY_QUOTA} quizzes reached. Come back tomorrow.`,
+      "Hourly generation limit reached. Please try again later.",
       correlationId,
+      hour.retryAfterSeconds,
     );
   }
+
+  const supabase = await createClient();
 
   // ---- Validate the multipart payload at the door -------------------------
   let form: FormData;
@@ -120,7 +104,12 @@ export async function POST(request: Request) {
     questions = await generateQuestions(extractedText, difficultyResult.data);
   } catch (error) {
     if (error instanceof QuizGenerationError) {
-      return apiError(error.code as ApiErrorCode, error.message, correlationId);
+      return apiError(
+        error.code as ApiErrorCode,
+        error.message,
+        correlationId,
+        error.retryAfterSeconds,
+      );
     }
     console.error(`[${correlationId}] unexpected generation error:`, error);
     return apiError(
@@ -130,11 +119,10 @@ export async function POST(request: Request) {
     );
   }
 
-  // ---- Persist through the RLS client — never a service-role bypass --------
+  // ---- Persist anonymously through the RLS client (write-once rows) --------
   const { data: quiz, error: quizError } = await supabase
     .from("quizzes")
     .insert({
-      user_id: user.id,
       pdf_name: file.name,
       difficulty: difficultyResult.data,
     })
@@ -159,8 +147,8 @@ export async function POST(request: Request) {
 
   if (questionsError) {
     console.error(`[${correlationId}] question insert failed:`, questionsError.message);
-    // Roll back the orphan quiz so no empty exam sheet remains.
-    await supabase.from("quizzes").delete().eq("id", quiz.id);
+    // Without delete RLS policies the orphan row cannot be removed client-side;
+    // log with correlation id so it can be cleaned via a maintenance script.
     return apiError("INTERNAL_ERROR", "Could not save the questions.", correlationId);
   }
 

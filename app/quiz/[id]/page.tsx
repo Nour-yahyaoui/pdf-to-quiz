@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -16,10 +16,6 @@ export default async function QuizPage({
   const { id } = await params;
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/login?redirectedFrom=/quiz/${id}`);
 
   const { data: quiz } = await supabase
     .from("quizzes")
@@ -51,7 +47,7 @@ export default async function QuizPage({
         className="mb-8 inline-flex min-h-11 items-center gap-2 text-sm text-mute hover:text-accent"
       >
         <ArrowLeft size={16} aria-hidden />
-        Back to dashboard
+        Back to your quizzes
       </Link>
 
       <header className="mb-10">

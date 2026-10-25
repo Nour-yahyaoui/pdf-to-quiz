@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { scoreAttempt } from "@/lib/quiz/scoring";
 import { ScoreHero } from "@/components/results/score-hero";
 import { ReviewList } from "@/components/results/review-list";
+import { AttemptRecorder } from "@/components/results/attempt-recorder";
 import type { QuestionRow } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Results" };
@@ -22,12 +23,8 @@ export default async function ResultsPage({
   const { attempt: attemptId } = await searchParams;
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/login?redirectedFrom=/quiz/${quizId}/results`);
 
-  // RLS guarantees the attempt belongs to the caller; a missing id is a 404.
+  // RLS allows public reads; a missing/unknown id is a 404.
   const { data: attempt } = await supabase
     .from("attempts")
     .select("id, quiz_id, score, total_questions, answers")
@@ -59,12 +56,13 @@ export default async function ResultsPage({
 
   return (
     <main className="container-sheet py-8 sm:py-12">
+      <AttemptRecorder quizId={quizId} score={score} total={total} pdfName={quiz.pdf_name} />
       <Link
         href="/dashboard"
         className="mb-8 inline-flex min-h-11 items-center gap-2 text-sm text-mute hover:text-accent"
       >
         <ArrowLeft size={16} aria-hidden />
-        Back to dashboard
+        Back to your quizzes
       </Link>
 
       <header className="mb-8">

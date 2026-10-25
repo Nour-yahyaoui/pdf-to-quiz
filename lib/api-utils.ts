@@ -27,14 +27,19 @@ export function apiError(
   code: ApiErrorCode,
   message: string,
   correlationId = newCorrelationId(),
+  retryAfterSeconds?: number | null,
 ): NextResponse<ApiErrorBody> {
   // Server-side detail; the client only ever receives the safe message.
   console.error(`[${correlationId}] API error: ${code} — ${message}`);
+  const retryAfter =
+    code === "RATE_LIMITED"
+      ? { "Retry-After": String(retryAfterSeconds ?? 30) }
+      : undefined;
   return NextResponse.json(
     { error: { code, message, correlationId } },
     {
       status: STATUS_BY_CODE[code],
-      headers: code === "RATE_LIMITED" ? { "Retry-After": "30" } : undefined,
+      headers: retryAfter,
     },
   );
 }

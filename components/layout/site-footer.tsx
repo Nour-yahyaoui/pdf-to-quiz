@@ -7,15 +7,15 @@ export function SiteFooter() {
         <div>
           <p className="font-display text-lg text-ink">PDF to Quiz</p>
           <p className="mt-1 text-sm text-mute">
-            Exam-sheet quizzes generated from your documents.
+            Exam-sheet quizzes generated from your documents. No account needed.
           </p>
         </div>
         <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm" aria-label="Footer">
-          <Link href="/signup" className="text-mute hover:text-accent">
-            Create account
+          <Link href="/create" className="text-mute hover:text-accent">
+            Create quiz
           </Link>
-          <Link href="/login" className="text-mute hover:text-accent">
-            Sign in
+          <Link href="/dashboard" className="text-mute hover:text-accent">
+            Your quizzes
           </Link>
           <a
             href="https://console.groq.com"

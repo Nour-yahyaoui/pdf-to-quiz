@@ -20,14 +20,14 @@ export interface Database {
       quizzes: {
         Row: {
           id: string;
-          user_id: string;
+          user_id: string | null;
           pdf_name: string;
           difficulty: Difficulty | null;
           created_at: string;
         };
         Insert: {
           id?: string;
-          user_id: string;
+          user_id?: string | null;
           pdf_name: string;
           difficulty?: Difficulty | null;
           created_at?: string;
@@ -61,7 +61,7 @@ export interface Database {
         Row: {
           id: string;
           quiz_id: string;
-          user_id: string;
+          user_id: string | null;
           score: number;
           total_questions: number;
           answers: string[] | null;
@@ -70,7 +70,7 @@ export interface Database {
         Insert: {
           id?: string;
           quiz_id: string;
-          user_id: string;
+          user_id?: string | null;
           score: number;
           total_questions: number;
           answers?: string[] | null;

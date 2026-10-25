@@ -16,20 +16,20 @@ export function Hero() {
           <p className="mt-6 max-w-measure text-body text-mute">
             Upload lecture notes, a research paper or any document up to 5&nbsp;MB.
             The reader extracts the text, the model writes ten multiple-choice
-            questions, and you get a marked exam sheet with explanations — saved to
-            your account.
+            questions, and you get a marked exam sheet with explanations — saved
+            without any account.
           </p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <ButtonLink href="/signup" size="lg">
+            <ButtonLink href="/create" size="lg">
               Build your first quiz
               <ArrowRight size={18} aria-hidden />
             </ButtonLink>
-            <ButtonLink href="/login" variant="secondary" size="lg">
-              I already have an account
+            <ButtonLink href="/dashboard" variant="secondary" size="lg">
+              Browse your quizzes
             </ButtonLink>
           </div>
           <p className="mt-5 font-mono text-label uppercase text-mute">
-            Free to try · No card required · PDFs are never stored
+            No account needed · Free to try · PDFs are never stored
           </p>
         </div>
 
