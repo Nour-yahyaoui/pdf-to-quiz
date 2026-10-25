@@ -7,7 +7,10 @@ export function formatBytes(bytes: number): string {
     Math.floor(Math.log(bytes) / Math.log(1024)),
   );
   const value = bytes / Math.pow(1024, exponent);
-  const rounded = exponent === 0 || value >= 10 ? Math.round(value) : value.toFixed(1);
+  const raw =
+    exponent === 0 || value >= 10 ? String(Math.round(value)) : value.toFixed(1);
+  // Whole values read as "2 KB", sub-whole values keep one decimal ("1.5 MB").
+  const rounded = raw.endsWith(".0") ? raw.slice(0, -2) : raw;
   return `${rounded} ${units[exponent]}`;
 }
 
