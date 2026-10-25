@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
-import { buildDiagnostics, flattenDiagnostics } from "@/lib/diagnostics";
 
 // TEMPORARY diagnostics page (v2.0.3), removed with /api/debug-groq once
 // the production generation failure is resolved. Runs the checks at
 // request time so it reflects the deployed environment, not build time.
+// The diagnostics module is imported dynamically so even a failure while
+// loading its dependency graph is rendered as a row instead of a 500.
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Diagnostics — PDF to Quiz",
   robots: { index: false, follow: false },
 };
+
+type Row = { label: string; value: string };
 
 export default async function DebugPage({
   searchParams,
@@ -16,15 +19,28 @@ export default async function DebugPage({
   searchParams: Promise<{ fast?: string }>;
 }) {
   const { fast } = await searchParams;
-  let checks: Record<string, unknown>;
+  let rows: Row[];
   try {
-    checks = await buildDiagnostics(fast === "1");
+    const diagnostics = await import("@/lib/diagnostics");
+    const checks = await diagnostics.buildDiagnostics(fast === "1");
+    rows = diagnostics.flattenDiagnostics(checks);
   } catch (error) {
-    checks = {
-      fatal: error instanceof Error ? error.message.slice(0, 300) : "unknown error",
-    };
+    rows = [
+      { label: "moduleLoad", value: "failed" },
+      {
+        label: "moduleLoad · error",
+        value: JSON.stringify(
+          error instanceof Error ? error.message.slice(0, 400) : "unknown error",
+        ),
+      },
+      {
+        label: "moduleLoad · stack",
+        value: JSON.stringify(
+          error instanceof Error ? (error.stack ?? "").slice(0, 600) : "",
+        ),
+      },
+    ];
   }
-  const rows = flattenDiagnostics(checks);
 
   return (
     <main
