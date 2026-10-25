@@ -26,7 +26,10 @@ export class QuizGenerationError extends Error {
 }
 
 const MODEL_TIMEOUT_MS = 20_000;
-const MAX_TOKENS = 2_500;
+// gpt-oss models are reasoning models: completion tokens include the hidden
+// reasoning chain before the JSON answer, so the cap needs headroom beyond
+// the ~1.5-2k tokens the ten-question payload itself uses.
+const MAX_TOKENS = 4_000;
 // Hard ceiling for the whole attempt sequence. The route's maxDuration is
 // 60s; this leaves headroom for PDF extraction and the two Supabase inserts
 // so the function always answers JSON instead of being killed into a 504.
