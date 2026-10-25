@@ -2,14 +2,15 @@
 
 **Live:** https://pdf-to-quiz-neon.vercel.app
 
-Upload a PDF (max 5 MB) and get a ten-question multiple-choice quiz in seconds.
-The document is parsed in memory, Groq's `llama-3.3-70b-versatile` writes the
-questions, and every quiz and attempt is saved privately to the user's account.
+Upload a PDF (max 5 MB) and get a ten-question multiple-choice quiz in seconds —
+**no account or sign-up required**. The document is parsed in memory, Groq's
+`llama-3.3-70b-versatile` writes the questions, and quizzes are reachable via
+unique links and remembered in the visitor's own browser.
 
 - **Framework:** Next.js 16 (App Router) · React 19 · TypeScript
 - **Styling:** Tailwind CSS, "Exam Paper" design system — see [`docs/STYLE.md`](docs/STYLE.md)
-- **Database & auth:** Supabase (Postgres, RLS, email/password + Google OAuth)
-- **AI:** Groq via `groq-sdk`, with `llama-3.1-8b-instant` fallback
+- **Database:** Supabase (Postgres, RLS) — anonymous access, write-once rows
+- **AI:** Groq via `groq-sdk`, with `llama-3.1-8b-instant` fallback and token-limit handling
 - **PDF parsing:** `pdf-parse` v2, server-side, in-memory only
 - **Extras:** dark mode (`next-themes`), toasts (`sonner`), confetti, vitest
 
@@ -22,12 +23,35 @@ questions, and every quiz and attempt is saved privately to the user's account.
    correct answers in the browser.
 4. Submission is scored server-side, the attempt is stored, and the results page
    marks every answer with explanations — confetti above 70%.
+5. The quiz id is kept in this browser's `localStorage`, so the dashboard lists
+   quizzes created on the device without any login.
+
+## No-account model
+
+- No Supabase Auth, no login or signup screens, no middleware.
+- RLS policies grant the Postgres `anon` role `SELECT`/`INSERT` only — there are
+  deliberately no `UPDATE`/`DELETE` policies or grants, so stored rows are immutable.
+- Quiz URLs contain an unguessable UUID (capability URL). Anyone with the link can
+  open the quiz; there is no global listing endpoint in the application.
+
+## Groq free-tier handling
+
+The free trial enforces separate requests-per-minute and tokens-per-minute windows
+plus a daily quota. The app handles all three explicitly:
+
+- **429 (token/request limit):** short backoff, then automatic retry on
+  `llama-3.1-8b-instant`, which has its own separate allowance.
+- **Still limited:** a precise message — e.g. *"Groq's free-tier token limit was
+  reached. It resets every minute — wait about 30 seconds and try again."* — with a
+  **Try again** button and a `Retry-After` header.
+- **Quota exhausted:** a distinct message explaining the daily reset.
+- **Timeout (45 s):** one retry on the fallback model, then a clear error.
 
 ## Local setup
 
 ```bash
 npm ci
-cp .env.example .env.local   # fill in the four variables
+cp .env.example .env.local   # fill in the three variables
 npm run dev                  # http://localhost:3000
 ```
 
@@ -37,25 +61,27 @@ Required environment variables:
 | --- | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project settings | Public |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase API keys | Public, RLS still applies |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase API keys | Server only; app intentionally never uses it |
 | `GROQ_API_KEY` | console.groq.com | Server only |
+
+`SUPABASE_SERVICE_ROLE_KEY` is accepted for compatibility but never used — the
+app only ever talks to Postgres through the anon client behind RLS.
 
 ### Database
 
-Apply [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql)
-in the Supabase SQL editor (or via the management API). It creates `quizzes`,
-`questions`, `attempts`, indexes, and owner-only RLS policies.
+Apply the migrations in `supabase/migrations/` in order:
 
-Google OAuth additionally needs a Google Cloud client configured in
-**Authentication → Providers** in the Supabase dashboard.
+1. `0001_init.sql` — tables, constraints, indexes
+2. `0002_anonymous_access.sql` — nullable owner, public RLS policies
+3. `0003_anon_grants.sql` — table grants for the `anon` role (RLS alone is not enough)
 
 ## Scripts
 
 | Command | Purpose |
 | --- | --- |
 | `npm run dev` | Development server |
-| `npm run build` | Production build |
-| `npm test` | vitest unit tests (22 tests) |
+| `npm run build` | Production build (passes without secrets) |
+| `npm test` | vitest unit tests (27 tests) |
+| `npm run lint` | ESLint 9 flat config |
 | `npm run typecheck` | Strict TypeScript check |
 | `npm run secrets:scan` | Fail if a secret pattern is tracked in git |
 
@@ -64,29 +90,28 @@ Google OAuth additionally needs a Google Cloud client configured in
 ```
 app/
   page.tsx                  Landing (public)
-  login/ signup/            Auth pages
-  dashboard/                Quiz list with loading/empty/error states
   create/                   Upload + difficulty + generation
+  dashboard/                Browser-local quiz history (localStorage)
   quiz/[id]/                Quiz runner (safe fields only)
   quiz/[id]/results/        Score, confetti, answer review
   api/generate-quiz/        PDF parse + Groq + persistence
   api/submit-quiz/          Server scoring + attempt storage
-  api/auth/*, auth/callback Auth handlers and OAuth exchange
 lib/
-  groq/                     Client, versioned prompts, retry policy
+  groq/                     Client, versioned prompts, error classifier, retry policy
   pdf/                      In-memory extraction
   quiz/                     JSON parser (zod) and pure scoring
-  supabase/                 SSR browser/server/middleware clients
+  history.ts                useSyncExternalStore localStorage history
+  supabase/                 SSR anon client + database types
 ```
 
 ## Security
 
-RLS on every table, server-side validation of all inputs and model output,
-per-user rate limits and a daily generation quota, no PDF storage, and a
-secret-scan gate. Full details in [`docs/SECURITY.md`](docs/SECURITY.md).
+RLS on every table with write-once grants, zod validation of all inputs and model
+output, IP-based rate limits, no PDF storage, and a secret-scan gate. Full details
+in [`docs/SECURITY.md`](docs/SECURITY.md).
 
 ## Deployment
 
-Deploys to Vercel with the Next.js preset. All four environment variables must
-be set in the Vercel project (production + preview). Migrations run separately
-against Supabase and are never part of the build.
+Deploys to Vercel with the Next.js preset. Environment variables are set in the
+Vercel project (production + preview). Migrations run separately against Supabase.
+See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
