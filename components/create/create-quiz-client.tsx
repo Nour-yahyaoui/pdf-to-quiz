@@ -211,7 +211,7 @@ export function CreateQuizClient() {
         </Button>
         {!fileReady && !pending && (
           <p className="mt-3 text-sm text-mute">
-            Select a PDF under 5&nbsp;MB to enable generation.
+            Select a PDF under 4.5&nbsp;MB to enable generation.
           </p>
         )}
       </section>
