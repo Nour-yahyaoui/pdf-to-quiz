@@ -21,6 +21,10 @@
   --warning: 169 112 26;     /* #A9701A */
   --shadow-color: 28 25 51;
 
+  /* System stacks (skill-sanctioned fallback): character serif + neutral sans.
+     No web-font network requests; pairing and scale do the work. */
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
