@@ -15,13 +15,17 @@ export const runtime = "nodejs";
 export const maxDuration = 30;
 
 export async function GET(request: Request) {
+  const wantsJson = new URL(request.url).searchParams.get("format") === "json";
   const ip = getClientIp(request.headers);
   const limit = rateLimit(`debug:min:${ip}`, 5, 60 * 1000);
   if (!limit.allowed) {
-    return Response.json(
-      { error: { code: "RATE_LIMITED", message: "Too many diagnostic checks." } },
-      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
-    );
+    const body = { error: { code: "RATE_LIMITED", message: "Too many diagnostic checks." } };
+    return wantsJson
+      ? Response.json(body, {
+          status: 429,
+          headers: { "Retry-After": String(limit.retryAfterSeconds) },
+        })
+      : htmlResponse(429, body, limit.retryAfterSeconds);
   }
 
   const checks: Record<string, unknown> = {
@@ -98,5 +102,25 @@ export async function GET(request: Request) {
     };
   }
 
-  return Response.json(checks, { headers: { "Cache-Control": "no-store" } });
+  if (wantsJson) {
+    return Response.json(checks, { headers: { "Cache-Control": "no-store" } });
+  }
+  return htmlResponse(200, checks);
+}
+
+function htmlResponse(status: number, body: unknown, retryAfterSeconds?: number) {
+  const json = JSON.stringify(body, null, 2);
+  const escaped = json
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+  const headers: Record<string, string> = { "Cache-Control": "no-store" };
+  if (retryAfterSeconds) headers["Retry-After"] = String(retryAfterSeconds);
+  return new Response(
+    `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>PDF to Quiz — diagnostics</title>` +
+      `<style>body{font:14px/1.5 ui-monospace,Menlo,Consolas,monospace;margin:2rem;background:#f7f5f0;color:#1a1a2e}` +
+      `h1{font:600 1.1rem system-ui,sans-serif}pre{white-space:pre-wrap;word-break:break-word}</style></head>` +
+      `<body><h1>PDF to Quiz — production diagnostics (temporary)</h1><pre>${escaped}</pre></body></html>`,
+    { status, headers: { ...headers, "Content-Type": "text/html; charset=utf-8" } },
+  );
 }
