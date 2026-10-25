@@ -16,7 +16,14 @@ export default async function DebugPage({
   searchParams: Promise<{ fast?: string }>;
 }) {
   const { fast } = await searchParams;
-  const checks = await buildDiagnostics(fast === "1");
+  let checks: Record<string, unknown>;
+  try {
+    checks = await buildDiagnostics(fast === "1");
+  } catch (error) {
+    checks = {
+      fatal: error instanceof Error ? error.message.slice(0, 300) : "unknown error",
+    };
+  }
   const rows = flattenDiagnostics(checks);
 
   return (

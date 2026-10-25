@@ -1,13 +1,12 @@
 import Groq from "groq-sdk";
 import { createClient } from "@/lib/supabase/server";
 import { classifyGroqError } from "@/lib/groq/errors";
-// Side effect: registers the in-process pdfjs worker on globalThis.
-import "@/lib/pdf/extract";
 
 /**
  * TEMPORARY production self-check (v2.0.3, removed with the debug page).
  * Builds a sanitised diagnostic object — never includes secret values,
  * only presence, prefixes, lengths, and classified failure reasons.
+ * Every check is isolated so one failure never crashes the whole report.
  */
 export async function buildDiagnostics(fast = false): Promise<Record<string, unknown>> {
   const checks: Record<string, unknown> = {
@@ -30,9 +29,21 @@ export async function buildDiagnostics(fast = false): Promise<Record<string, unk
   };
 
   // 2. The in-process pdfjs worker must be registered (the v2.0.1 fix).
-  checks.pdfWorker = {
-    registered: Boolean(globalThis.pdfjsWorker?.WorkerMessageHandler),
-  };
+  // Dynamic import inside try/catch so a bundler/runtime failure is
+  // reported as a diagnostic row instead of a 500.
+  try {
+    await import("@/lib/pdf/extract");
+    checks.pdfWorker = {
+      imported: true,
+      registered: Boolean(globalThis.pdfjsWorker?.WorkerMessageHandler),
+    };
+  } catch (error) {
+    checks.pdfWorker = {
+      imported: false,
+      registered: false,
+      error: error instanceof Error ? error.message.slice(0, 200) : "unknown error",
+    };
+  }
 
   if (fast) {
     checks.groq = { ok: null, skipped: "fast mode — live call skipped" };
@@ -41,8 +52,8 @@ export async function buildDiagnostics(fast = false): Promise<Record<string, unk
   }
 
   // 3. Live, minimal Groq call on the fast fallback model (15s ceiling).
-  if (groqKey.length > 0) {
-    try {
+  try {
+    if (groqKey.length > 0) {
       const client = new Groq({ apiKey: groqKey });
       const startedAt = Date.now();
       const completion = await client.chat.completions.create(
@@ -59,18 +70,18 @@ export async function buildDiagnostics(fast = false): Promise<Record<string, unk
         latencyMs: Date.now() - startedAt,
         reply: (completion.choices[0]?.message?.content ?? "").slice(0, 40),
       };
-    } catch (error) {
-      const failure = classifyGroqError(error);
-      checks.groq = {
-        ok: false,
-        kind: failure.kind,
-        status: failure.status,
-        retryAfterSeconds: failure.retryAfterSeconds,
-        message: failure.message,
-      };
+    } else {
+      checks.groq = { ok: false, skipped: "GROQ_API_KEY is not set in this environment" };
     }
-  } else {
-    checks.groq = { ok: false, skipped: "GROQ_API_KEY is not set in this environment" };
+  } catch (error) {
+    const failure = classifyGroqError(error);
+    checks.groq = {
+      ok: false,
+      kind: failure.kind,
+      status: failure.status,
+      retryAfterSeconds: failure.retryAfterSeconds,
+      message: failure.message,
+    };
   }
 
   // 4. Supabase reachability through the RLS client (read-only head query).
@@ -92,7 +103,7 @@ export async function buildDiagnostics(fast = false): Promise<Record<string, unk
   return checks;
 }
 
-/** Flatten a nested object into dot/separator-labelled rows for display. */
+/** Flatten a nested object into separator-labelled rows for display. */
 export function flattenDiagnostics(
   value: unknown,
   prefix = "",
