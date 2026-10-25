@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Exam Paper design tokens — see docs/STYLE.md.
+  Colors stored as space-separated RGB triplets for Tailwind alpha support.
+*/
+:root {
+  --paper: 247 245 239;      /* #F7F5EF warm exam paper */
+  --raised: 252 251 247;     /* #FCFBF7 raised sheet */
+  --ink: 28 25 51;           /* #1C1933 deep indigo ink */
+  --mute: 110 106 130;       /* #6E6A82 indigo grey */
+  --rule: 222 217 206;       /* #DED9CE hairline */
+  --rule-soft: 236 232 222;  /* #ECE8DE */
+  --accent: 79 70 229;       /* #4F46E5 exam violet */
+  --accent-deep: 55 48 163;  /* #3730A3 */
+  --accent-tint: 236 233 253;/* #ECE9FD */
+  --success: 47 107 69;      /* #2F6B45 */
+  --danger: 196 52 11;       /* #C4340B */
+  --warning: 169 112 26;     /* #A9701A */
+  --shadow-color: 28 25 51;
+
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.dark {
+  --paper: 19 16 31;         /* #13101F indigo black */
+  --raised: 27 23 48;        /* #1B1730 */
+  --ink: 236 233 245;        /* #ECE9F5 */
+  --mute: 154 148 181;       /* #9A94B5 */
+  --rule: 43 37 64;          /* #2B2540 */
+  --rule-soft: 33 28 51;     /* #211C33 */
+  --accent: 139 128 249;     /* #8B80F9 lightened for dark contrast */
+  --accent-deep: 165 156 252;/* #A59CFC */
+  --accent-tint: 38 32 73;   /* #262049 */
+  --success: 88 196 132;     /* lightened for dark */
+  --danger: 240 111 76;
+  --warning: 224 176 94;
+  --shadow-color: 0 0 0;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-paper text-ink font-sans text-body antialiased;
+    font-feature-settings: "kern";
+  }
+
+  /* Numbers in tables/scores align — distinctive-visual-style craft rule */
+  table,
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* One selection colour, derived from the accent */
+  ::selection {
+    background: rgb(var(--accent) / 0.18);
+  }
+
+  /* Always-visible focus — accessibility skill non-negotiable */
+  :focus-visible {
+    outline: 2px solid rgb(var(--accent));
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  h1, h2, h3 {
+    @apply font-display;
+    text-wrap: balance;
+  }
+
+  /* Respect reduced-motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Mono exam label: "QUESTION 03 / 10" */
+  .exam-label {
+    @apply font-mono text-label uppercase text-mute;
+  }
+
+  /* Hairline row — the primary structural device, not cards+shadows */
+  .hairline {
+    @apply border-b border-rule;
+  }
+
+  .container-sheet {
+    @apply mx-auto w-full max-w-sheet px-4 sm:px-6 lg:px-8;
+  }
+}
