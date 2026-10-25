@@ -68,5 +68,11 @@ export interface ApiErrorBody {
     code: ApiErrorCode;
     message: string;
     correlationId: string;
+    /**
+     * Optional sanitised technical detail (error name/message, never stack
+     * traces, secrets, or environment values) so the UI can show what actually
+     * failed instead of an opaque generic message.
+     */
+    detail?: string;
   };
 }
