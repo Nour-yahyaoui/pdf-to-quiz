@@ -3,8 +3,9 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowRight, Check, Loader2 } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 
 export interface SafeQuestion {
   id: string;
@@ -74,7 +75,7 @@ export function QuizRunner({ quizId, questions }: QuizRunnerProps) {
   }
 
   return (
-    <div>
+    <div aria-busy={submitting}>
       {/* Progress */}
       <div className="mb-8">
         <div className="mb-2 flex items-center justify-between">
@@ -106,7 +107,12 @@ export function QuizRunner({ quizId, questions }: QuizRunnerProps) {
           {question.question_text}
         </h2>
 
-        <fieldset className="mt-8">
+        <fieldset
+          className={`mt-8 transition-opacity ${
+            submitting ? "pointer-events-none opacity-60" : ""
+          }`}
+          disabled={submitting}
+        >
           <legend className="sr-only">Choose one answer</legend>
           <ul className="overflow-hidden rounded-md border border-rule bg-raised">
             {question.options.map((option, index) => {
@@ -151,14 +157,25 @@ export function QuizRunner({ quizId, questions }: QuizRunnerProps) {
         </fieldset>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="font-mono text-label uppercase text-mute">
-            {answers.filter(Boolean).length} of {total} answered
-          </p>
+          {submitting ? (
+            <p
+              className="inline-flex items-center gap-2 text-sm text-mute"
+              role="status"
+              aria-live="polite"
+            >
+              <Spinner size="sm" />
+              Submitting your answers and marking…
+            </p>
+          ) : (
+            <p className="font-mono text-label uppercase text-mute">
+              {answers.filter(Boolean).length} of {total} answered
+            </p>
+          )}
           {isLast ? (
             <Button size="lg" onClick={submit} disabled={!selected || submitting}>
               {submitting ? (
                 <>
-                  <Loader2 size={18} className="animate-spin" aria-hidden />
+                  <Spinner size="sm" />
                   Marking your exam…
                 </>
               ) : (
