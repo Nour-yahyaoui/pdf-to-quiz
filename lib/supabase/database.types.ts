@@ -1,6 +1,6 @@
 /**
  * Hand-maintained database types mirroring supabase/migrations/0001_init.sql.
- * Kept in the shape Supabase's generated types use so `supabase gen types`
+ * Kept in the exact shape Supabase's generated types use so `supabase gen types`
  * can replace this file later without touching application code.
  */
 
@@ -33,6 +33,7 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["quizzes"]["Insert"]>;
+        Relationships: [];
       };
       questions: {
         Row: {
@@ -54,6 +55,7 @@ export interface Database {
           order_index: number;
         };
         Update: Partial<Database["public"]["Tables"]["questions"]["Insert"]>;
+        Relationships: [];
       };
       attempts: {
         Row: {
@@ -75,10 +77,12 @@ export interface Database {
           completed_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["attempts"]["Insert"]>;
+        Relationships: [];
       };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
     Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
   };
 }
