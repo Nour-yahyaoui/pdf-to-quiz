@@ -1,23 +1,17 @@
-import Groq from "groq-sdk";
-import { createClient } from "@/lib/supabase/server";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
-import { classifyGroqError } from "@/lib/groq/errors";
-// Importing the extractor runs its module side effect that registers the
-// in-process pdfjs worker on globalThis (the v2.0.1 serverless fix).
-import { extractPdfText } from "@/lib/pdf/extract";
+import { buildDiagnostics } from "@/lib/diagnostics";
 
 // TEMPORARY diagnostic endpoint (v2.0.3): reports whether the production
 // function can reach Groq and Supabase with the configured environment.
 // Read-only, rate limited, and every value is sanitised — no secrets are
 // ever returned. Scheduled for removal once the generation failure is
-// resolved. See PR description for the full investigation.
+// resolved. The same checks render as a page at /debug.
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const wantsJson = requestUrl.searchParams.get("format") === "json";
-  // fast=1 skips the live Groq/Supabase calls and returns instantly.
   const fast = requestUrl.searchParams.get("fast") === "1";
   const ip = getClientIp(request.headers);
   const limit = rateLimit(`debug:min:${ip}`, 5, 60 * 1000);
@@ -31,96 +25,12 @@ export async function GET(request: Request) {
       : htmlResponse(429, body, limit.retryAfterSeconds);
   }
 
-  const checks: Record<string, unknown> = {
-    node: process.version,
-    time: new Date().toISOString(),
-  };
-
-  // 1. Environment shape — presence and prefix only, never the value.
-  const groqKey = process.env.GROQ_API_KEY ?? "";
-  checks.env = {
-    GROQ_API_KEY: {
-      present: groqKey.length > 0,
-      startsWithGsk: groqKey.startsWith("gsk_"),
-      length: groqKey.length,
-    },
-    NEXT_PUBLIC_SUPABASE_URL: { present: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) },
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: {
-      present: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
-    },
-  };
-
-  // 2. The in-process pdfjs worker must be registered (the v2.0.1 fix).
-  checks.pdfWorker = {
-    registered: Boolean(globalThis.pdfjsWorker?.WorkerMessageHandler),
-    extractorLoaded: typeof extractPdfText === "function",
-  };
-
-  if (fast) {
-    checks.groq = { ok: null, skipped: "fast mode — live call skipped" };
-    checks.supabase = { ok: null, skipped: "fast mode — live call skipped" };
-  } else {
-    await runLiveChecks(checks, groqKey);
-  }
+  const checks = await buildDiagnostics(fast);
 
   if (wantsJson) {
     return Response.json(checks, { headers: { "Cache-Control": "no-store" } });
   }
   return htmlResponse(200, checks);
-}
-
-async function runLiveChecks(
-  checks: Record<string, unknown>,
-  groqKey: string,
-): Promise<void> {
-  // 3. Live, minimal Groq call on the fast fallback model (15s ceiling).
-  if (groqKey.length > 0) {
-    try {
-      const client = new Groq({ apiKey: groqKey });
-      const startedAt = Date.now();
-      const completion = await client.chat.completions.create(
-        {
-          model: "llama-3.1-8b-instant",
-          max_tokens: 5,
-          messages: [{ role: "user", content: "Reply with the single word: ok" }],
-        },
-        { signal: AbortSignal.timeout(15_000) },
-      );
-      checks.groq = {
-        ok: true,
-        model: completion.model,
-        latencyMs: Date.now() - startedAt,
-        reply: (completion.choices[0]?.message?.content ?? "").slice(0, 40),
-      };
-    } catch (error) {
-      const failure = classifyGroqError(error);
-      checks.groq = {
-        ok: false,
-        kind: failure.kind,
-        status: failure.status,
-        retryAfterSeconds: failure.retryAfterSeconds,
-        message: failure.message,
-      };
-    }
-  } else {
-    checks.groq = { ok: false, skipped: "GROQ_API_KEY is not set in this environment" };
-  }
-
-  // 4. Supabase reachability through the RLS client (read-only head query).
-  try {
-    const supabase = await createClient();
-    const { error } = await supabase
-      .from("quizzes")
-      .select("id", { count: "exact", head: true });
-    checks.supabase = error
-      ? { ok: false, message: error.message.slice(0, 150) }
-      : { ok: true };
-  } catch (error) {
-    checks.supabase = {
-      ok: false,
-      message: error instanceof Error ? error.message.slice(0, 150) : "unknown error",
-    };
-  }
 }
 
 function esc(value: unknown): string {
@@ -130,7 +40,6 @@ function esc(value: unknown): string {
     .replaceAll(">", "&gt;");
 }
 
-/** Flatten the nested diagnostic object into semantic HTML rows. */
 function rows(prefix: string, value: unknown): string {
   if (value !== null && typeof value === "object" && !Array.isArray(value)) {
     return Object.entries(value as Record<string, unknown>)
