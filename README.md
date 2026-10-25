@@ -4,13 +4,13 @@
 
 Upload a PDF (max 4.5 MB) and get a ten-question multiple-choice quiz in seconds —
 **no account or sign-up required**. The document is parsed in memory, Groq's
-`llama-3.3-70b-versatile` writes the questions, and quizzes are reachable via
+`openai/gpt-oss-120b` writes the questions, and quizzes are reachable via
 unique links and remembered in the visitor's own browser.
 
 - **Framework:** Next.js 16 (App Router) · React 19 · TypeScript
 - **Styling:** Tailwind CSS, "Exam Paper" design system — see [`docs/STYLE.md`](docs/STYLE.md)
 - **Database:** Supabase (Postgres, RLS) — anonymous access, write-once rows
-- **AI:** Groq via `groq-sdk`, with `llama-3.1-8b-instant` fallback and token-limit handling
+- **AI:** Groq via `groq-sdk`, with `openai/gpt-oss-20b` fallback and token-limit handling
 - **PDF parsing:** `pdf-parse` v2, server-side, in-memory only
 - **Extras:** dark mode (`next-themes`), toasts (`sonner`), confetti, vitest
 
@@ -40,7 +40,7 @@ The free trial enforces separate requests-per-minute and tokens-per-minute windo
 plus a daily quota. The app handles all three explicitly:
 
 - **429 (token/request limit):** short backoff, then automatic retry on
-  `llama-3.1-8b-instant`, which has its own separate allowance.
+  `openai/gpt-oss-20b`, which has its own separate allowance.
 - **Still limited:** a precise message — e.g. *"Groq's free-tier token limit was
   reached. It resets every minute — wait about 30 seconds and try again."* — with a
   **Try again** button and a `Retry-After` header.

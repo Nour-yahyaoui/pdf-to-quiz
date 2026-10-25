@@ -1,3 +1,7 @@
+// Must run before pdf-parse/pdfjs evaluate: they read DOMMatrix and friends
+// at module scope, and the native @napi-rs/canvas fallback is not traced into
+// the serverless bundle. Pure-JS, guarded so it never clobbers a real global.
+import "@/lib/pdf/dom-polyfill";
 import { PDFParse } from "pdf-parse";
 // Statically import the pdfjs worker so the bundler includes it in the server
 // chunk. We then register it on globalThis as the in-process ("fake") worker.

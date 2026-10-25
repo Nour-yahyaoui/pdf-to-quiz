@@ -57,7 +57,7 @@ export async function buildDiagnostics(fast = false): Promise<Record<string, unk
       const startedAt = Date.now();
       const completion = await client.chat.completions.create(
         {
-          model: "llama-3.1-8b-instant",
+          model: "openai/gpt-oss-20b",
           max_tokens: 5,
           messages: [{ role: "user", content: "Reply with the single word: ok" }],
         },

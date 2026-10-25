@@ -17,6 +17,12 @@ const REQUEST_TIMEOUT_MS = 60_000;
 interface InlineError {
   message: string;
   retryable: boolean;
+  // Sanitised technical detail returned by the API error contract (or a
+  // platform-level description when no JSON body came back).
+  code?: string;
+  detail?: string;
+  correlationId?: string;
+  status?: number;
 }
 
 export function CreateQuizClient() {
@@ -102,22 +108,34 @@ export function CreateQuizClient() {
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        // Our API always answers with a JSON error contract. A missing body
-        // means the platform itself failed: a 504 function timeout or an HTML
-        // error page, which deserve their own explanation instead of a
-        // duplicated generic title.
+        // Our API always answers with a JSON error contract carrying a
+        // sanitised technical `detail`. A missing body means the platform
+        // itself failed: a 504 function timeout or an HTML error page, which
+        // deserve their own explanation instead of a duplicated generic title.
+        const apiErrorBody = data?.error;
         let message: string;
-        if (data?.error?.message) {
-          message = data.error.message;
+        let detail: string | undefined;
+        if (apiErrorBody?.message) {
+          message = apiErrorBody.message;
+          detail = apiErrorBody.detail ?? `Error code: ${apiErrorBody.code}`;
         } else if (res.status === 504) {
           message =
             "Generation timed out on the server. The AI model may be busy — please try again.";
+          detail = `HTTP ${res.status} — the function exceeded its time limit and returned no JSON body.`;
         } else {
           message =
             "The server returned an unexpected response. Please try again in a moment.";
+          detail = `HTTP ${res.status} — no JSON error body was returned.`;
         }
         const retryable = res.status === 429 || res.status >= 500;
-        setInlineError({ message, retryable });
+        setInlineError({
+          message,
+          retryable,
+          code: apiErrorBody?.code,
+          detail,
+          correlationId: apiErrorBody?.correlationId,
+          status: res.status,
+        });
         return;
       }
 
@@ -208,6 +226,46 @@ export function CreateQuizClient() {
             <div className="flex-1">
               <p className="font-medium text-ink">Quiz generation failed</p>
               <p className="mt-1 text-sm text-mute">{inlineError.message}</p>
+
+              {(inlineError.detail ||
+                inlineError.code ||
+                inlineError.correlationId) && (
+                <details
+                  open
+                  className="mt-3 rounded-md border border-danger/30 bg-white/60 p-3 text-xs dark:bg-black/20"
+                >
+                  <summary className="cursor-pointer font-medium text-ink">
+                    Technical details
+                  </summary>
+                  <dl className="mt-2 space-y-1 font-mono text-label break-words text-mute">
+                    {inlineError.status !== undefined && (
+                      <div className="flex gap-2">
+                        <dt className="shrink-0 font-sans font-medium">HTTP status:</dt>
+                        <dd>{inlineError.status}</dd>
+                      </div>
+                    )}
+                    {inlineError.code && (
+                      <div className="flex gap-2">
+                        <dt className="shrink-0 font-sans font-medium">Error code:</dt>
+                        <dd>{inlineError.code}</dd>
+                      </div>
+                    )}
+                    {inlineError.detail && (
+                      <div className="flex gap-2">
+                        <dt className="shrink-0 font-sans font-medium">Reason:</dt>
+                        <dd>{inlineError.detail}</dd>
+                      </div>
+                    )}
+                    {inlineError.correlationId && (
+                      <div className="flex gap-2">
+                        <dt className="shrink-0 font-sans font-medium">Reference:</dt>
+                        <dd>{inlineError.correlationId}</dd>
+                      </div>
+                    )}
+                  </dl>
+                </details>
+              )}
+
               {inlineError.retryable && (
                 <Button
                   variant="secondary"

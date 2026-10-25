@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { apiError, newCorrelationId, okJson } from "@/lib/api-utils";
+import { apiError, newCorrelationId, okJson, toErrorDetail } from "@/lib/api-utils";
 import { difficultySchema, MAX_PDF_BYTES } from "@/lib/validation";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { extractPdfText, isPdfBytes } from "@/lib/pdf/extract";
@@ -29,6 +29,8 @@ export async function POST(request: Request) {
       "INTERNAL_ERROR",
       "Something went wrong while building your quiz. Please try again.",
       correlationId,
+      undefined,
+      toErrorDetail(error),
     );
   }
 }
@@ -104,6 +106,8 @@ async function handlePost(request: Request, correlationId: string) {
       "VALIDATION_ERROR",
       "The PDF could not be read. It may be scanned images or corrupted.",
       correlationId,
+      undefined,
+      toErrorDetail(error),
     );
   }
 
@@ -126,6 +130,7 @@ async function handlePost(request: Request, correlationId: string) {
         error.message,
         correlationId,
         error.retryAfterSeconds,
+        `${error.name} [${error.code}]: ${error.message}`,
       );
     }
     console.error(`[${correlationId}] unexpected generation error:`, error);
@@ -133,6 +138,8 @@ async function handlePost(request: Request, correlationId: string) {
       "AI_UNAVAILABLE",
       "The quiz service is temporarily unavailable. Please try again.",
       correlationId,
+      undefined,
+      toErrorDetail(error),
     );
   }
 
@@ -148,7 +155,13 @@ async function handlePost(request: Request, correlationId: string) {
 
   if (quizError || !quiz) {
     console.error(`[${correlationId}] quiz insert failed:`, quizError?.message);
-    return apiError("INTERNAL_ERROR", "Could not save the quiz.", correlationId);
+    return apiError(
+      "INTERNAL_ERROR",
+      "Could not save the quiz.",
+      correlationId,
+      undefined,
+      quizError?.message ? `Supabase: ${quizError.message}` : "No quiz row returned",
+    );
   }
 
   const { error: questionsError } = await supabase.from("questions").insert(
@@ -166,7 +179,13 @@ async function handlePost(request: Request, correlationId: string) {
     console.error(`[${correlationId}] question insert failed:`, questionsError.message);
     // Without delete RLS policies the orphan row cannot be removed client-side;
     // log with correlation id so it can be cleaned via a maintenance script.
-    return apiError("INTERNAL_ERROR", "Could not save the questions.", correlationId);
+    return apiError(
+      "INTERNAL_ERROR",
+      "Could not save the questions.",
+      correlationId,
+      undefined,
+      `Supabase: ${questionsError.message}`,
+    );
   }
 
   return okJson({ quizId: quiz.id });
