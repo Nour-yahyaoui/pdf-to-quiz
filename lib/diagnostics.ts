@@ -1,12 +1,12 @@
-import Groq from "groq-sdk";
-import { createClient } from "@/lib/supabase/server";
 import { classifyGroqError } from "@/lib/groq/errors";
 
 /**
  * TEMPORARY production self-check (v2.0.3, removed with the debug page).
  * Builds a sanitised diagnostic object — never includes secret values,
  * only presence, prefixes, lengths, and classified failure reasons.
- * Every check is isolated so one failure never crashes the whole report.
+ * Every dependency is loaded dynamically inside its probe's try/catch so
+ * a failure while evaluating any dependency graph is reported as a row
+ * instead of crashing the invoking page or route.
  */
 export async function buildDiagnostics(fast = false): Promise<Record<string, unknown>> {
   const checks: Record<string, unknown> = {
@@ -29,8 +29,6 @@ export async function buildDiagnostics(fast = false): Promise<Record<string, unk
   };
 
   // 2. The in-process pdfjs worker must be registered (the v2.0.1 fix).
-  // Dynamic import inside try/catch so a bundler/runtime failure is
-  // reported as a diagnostic row instead of a 500.
   try {
     await import("@/lib/pdf/extract");
     checks.pdfWorker = {
@@ -53,6 +51,7 @@ export async function buildDiagnostics(fast = false): Promise<Record<string, unk
 
   // 3. Live, minimal Groq call on the fast fallback model (15s ceiling).
   try {
+    const { default: Groq } = await import("groq-sdk");
     if (groqKey.length > 0) {
       const client = new Groq({ apiKey: groqKey });
       const startedAt = Date.now();
@@ -81,11 +80,14 @@ export async function buildDiagnostics(fast = false): Promise<Record<string, unk
       status: failure.status,
       retryAfterSeconds: failure.retryAfterSeconds,
       message: failure.message,
+      importOrCallError:
+        error instanceof Error ? error.message.slice(0, 200) : "unknown error",
     };
   }
 
   // 4. Supabase reachability through the RLS client (read-only head query).
   try {
+    const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
     const { error } = await supabase
       .from("quizzes")
@@ -96,7 +98,7 @@ export async function buildDiagnostics(fast = false): Promise<Record<string, unk
   } catch (error) {
     checks.supabase = {
       ok: false,
-      message: error instanceof Error ? error.message.slice(0, 150) : "unknown error",
+      message: error instanceof Error ? error.message.slice(0, 200) : "unknown error",
     };
   }
 
