@@ -3,10 +3,12 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { AlertTriangle, Loader2, RotateCcw, Sparkles } from "lucide-react";
+import { AlertTriangle, RotateCcw, Sparkles } from "lucide-react";
 import { UploadZone } from "@/components/create/upload-zone";
 import { DifficultySelector } from "@/components/create/difficulty-selector";
+import { GenerationProgress } from "@/components/create/generation-progress";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { MAX_PDF_BYTES } from "@/lib/validation";
 import { addQuizToHistory } from "@/lib/history";
 import type { Difficulty } from "@/lib/types";
@@ -199,8 +201,8 @@ export function CreateQuizClient() {
         >
           {pending ? (
             <>
-              <Loader2 size={18} className="animate-spin" aria-hidden />
-              Reading your PDF and crafting questions…
+              <Spinner size="sm" />
+              Generating…
             </>
           ) : (
             <>
@@ -215,6 +217,12 @@ export function CreateQuizClient() {
           </p>
         )}
       </section>
+
+      {pending && (
+        <section aria-label="Generation progress">
+          <GenerationProgress />
+        </section>
+      )}
 
       {inlineError && (
         <div

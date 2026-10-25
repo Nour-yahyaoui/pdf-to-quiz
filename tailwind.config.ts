@@ -71,10 +71,17 @@ const config: Config = {
           from: { opacity: "0", transform: "translateY(14px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        // Sliding segment inside an overflow-hidden track — used by the
+        // generation progress bar while total duration is unknown.
+        "indeterminate-slide": {
+          from: { transform: "translateX(-120%)" },
+          to: { transform: "translateX(420%)" },
+        },
       },
       animation: {
         "fade-in": "fade-in 220ms ease-out both",
         "slide-up": "slide-up 280ms ease-out both",
+        "indeterminate": "indeterminate-slide 1.4s ease-in-out infinite",
       },
     },
   },
