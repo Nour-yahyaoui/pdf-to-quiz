@@ -1,5 +1,5 @@
 import Groq from "groq-sdk";
-import { env } from "@/lib/env";
+import { getEnv } from "@/lib/env";
 
 /**
  * Server-only singleton. The API key never leaves the server — browsers only
@@ -9,7 +9,7 @@ let client: Groq | null = null;
 
 export function getGroqClient(): Groq {
   if (!client) {
-    client = new Groq({ apiKey: env.GROQ_API_KEY });
+    client = new Groq({ apiKey: getEnv().GROQ_API_KEY });
   }
   return client;
 }
