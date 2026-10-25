@@ -10,12 +10,12 @@ export function CtaBand() {
           Your next reading assignment can grade itself
         </h2>
         <p className="mx-auto mt-4 max-w-measure text-mute">
-          Create an account, upload a PDF and walk through your first quiz before
+          No account needed — upload a PDF and walk through your first quiz before
           your coffee gets cold.
         </p>
         <div className="mt-8 flex justify-center">
-          <ButtonLink href="/signup" size="lg">
-            Get started free
+          <ButtonLink href="/create" size="lg">
+            Upload a PDF now
             <ArrowRight size={18} aria-hidden />
           </ButtonLink>
         </div>

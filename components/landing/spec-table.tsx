@@ -10,8 +10,8 @@ const SPEC_ROWS = [
   ["Difficulty", "Easy, medium or hard — chosen before generation"],
   ["Model", "Llama 3.3 70B Versatile on Groq, instant fallback model"],
   ["Review", "Per-question marking with an AI-written explanation"],
-  ["Storage", "Quizzes and attempts saved to your private account"],
-  ["Privacy", "Row-Level Security on every table; PDFs never stored"],
+  ["Storage", "Quizzes remembered in this browser, content stored behind RLS"],
+  ["Privacy", "No account required; Row-Level Security on every table; PDFs never stored"],
 ] as const;
 
 export function SpecTable() {

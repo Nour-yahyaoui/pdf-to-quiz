@@ -3,21 +3,28 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Sparkles } from "lucide-react";
+import { AlertTriangle, Loader2, RotateCcw, Sparkles } from "lucide-react";
 import { UploadZone } from "@/components/create/upload-zone";
 import { DifficultySelector } from "@/components/create/difficulty-selector";
 import { Button } from "@/components/ui/button";
 import { MAX_PDF_BYTES } from "@/lib/validation";
+import { addQuizToHistory } from "@/lib/history";
 import type { Difficulty } from "@/lib/types";
 
 const PDF_MAGIC = [0x25, 0x50, 0x44, 0x46]; // %PDF
 const REQUEST_TIMEOUT_MS = 60_000;
+
+interface InlineError {
+  message: string;
+  retryable: boolean;
+}
 
 export function CreateQuizClient() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [fileError, setFileError] = useState<string | null>(null);
+  const [inlineError, setInlineError] = useState<InlineError | null>(null);
   const [pending, setPending] = useState(false);
 
   const fileReady = useMemo(
@@ -27,33 +34,31 @@ export function CreateQuizClient() {
 
   function handleSelect(next: File) {
     setFileError(null);
+    setInlineError(null);
 
     // Extension gate: OS-reported MIME types for PDFs vary and cannot be trusted alone.
-    const isPdfByName = next.name.toLowerCase().endsWith(".pdf");
-    if (!isPdfByName) {
+    if (!next.name.toLowerCase().endsWith(".pdf")) {
       setFileError("Only PDF documents are accepted.");
       setFile(next);
       return;
     }
-
     if (next.size > MAX_PDF_BYTES) {
       setFileError("File too large. Maximum size is 5MB.");
       setFile(next);
       return;
     }
-
     if (next.size === 0) {
       setFileError("That file is empty. Choose a PDF with readable text.");
       setFile(next);
       return;
     }
-
     setFile(next);
   }
 
   function handleClear() {
     setFile(null);
     setFileError(null);
+    setInlineError(null);
   }
 
   async function verifyPdfHeader(selected: File): Promise<boolean> {
@@ -62,9 +67,10 @@ export function CreateQuizClient() {
     return PDF_MAGIC.every((byte, i) => byte === header[i]);
   }
 
-  async function handleGenerate() {
+  async function generate() {
     if (!file || pending) return;
     setFileError(null);
+    setInlineError(null);
 
     if (file.size > MAX_PDF_BYTES) {
       setFileError("File too large. Maximum size is 5MB.");
@@ -98,22 +104,40 @@ export function CreateQuizClient() {
       if (!res.ok) {
         const message =
           data?.error?.message ?? "Quiz generation failed. Please try again.";
-        toast.error(message);
+        const retryable = res.status === 429 || res.status >= 500;
+        setInlineError({ message, retryable });
         return;
       }
 
       if (!data?.quizId) {
-        toast.error("The quiz was generated but no id came back. Try again.");
+        setInlineError({
+          message: "The quiz was generated but no id came back. Try again.",
+          retryable: true,
+        });
         return;
       }
+
+      addQuizToHistory({
+        id: data.quizId,
+        pdf_name: file.name,
+        difficulty,
+        createdAt: new Date().toISOString(),
+      });
 
       toast.success("Quiz ready. Good luck.");
       router.push(`/quiz/${data.quizId}`);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
-        toast.error("Generation timed out. Please try again.");
+        setInlineError({
+          message: "Generation timed out. The model may be busy — please try again.",
+          retryable: true,
+        });
       } else {
         toast.error("Network problem — check your connection and try again.");
+        setInlineError({
+          message: "Network problem — check your connection and try again.",
+          retryable: true,
+        });
       }
     } finally {
       setPending(false);
@@ -139,7 +163,7 @@ export function CreateQuizClient() {
         <p className="exam-label mb-3">Step 3 — generate</p>
         <Button
           size="lg"
-          onClick={handleGenerate}
+          onClick={generate}
           disabled={!fileReady || pending}
           className="w-full sm:w-auto"
         >
@@ -161,6 +185,32 @@ export function CreateQuizClient() {
           </p>
         )}
       </section>
+
+      {inlineError && (
+        <div
+          role="alert"
+          className="animate-fade-in rounded-md border border-danger/40 bg-danger/10 p-5"
+        >
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={20} aria-hidden className="mt-0.5 shrink-0 text-danger" />
+            <div className="flex-1">
+              <p className="font-medium text-ink">Quiz generation failed</p>
+              <p className="mt-1 text-sm text-mute">{inlineError.message}</p>
+              {inlineError.retryable && (
+                <Button
+                  variant="secondary"
+                  className="mt-4"
+                  onClick={generate}
+                  disabled={pending || !fileReady}
+                >
+                  <RotateCcw size={16} aria-hidden />
+                  Try again
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

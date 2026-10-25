@@ -16,8 +16,8 @@ export default function NotFound() {
             This sheet has gone missing
           </h1>
           <p className="mt-5 text-body text-mute">
-            The page you are looking for does not exist, or it may belong to another
-            account. Quizzes are private to the user who created them.
+            The page you are looking for does not exist. Quizzes are reachable only
+            through their unique link or the history saved on this device.
           </p>
           <div className="mt-9 flex flex-wrap gap-3">
             <Link

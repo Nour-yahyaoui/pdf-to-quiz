@@ -1,15 +1,7 @@
 import Link from "next/link";
 import { ChevronRight, FileText } from "lucide-react";
+import type { HistoryEntry } from "@/lib/history";
 import type { Difficulty } from "@/lib/types";
-
-export interface DashboardQuiz {
-  id: string;
-  pdf_name: string;
-  difficulty: Difficulty | null;
-  created_at: string;
-  latestScore: number | null;
-  latestTotal: number | null;
-}
 
 const DIFFICULTY_LABEL: Record<Difficulty, string> = {
   easy: "Easy",
@@ -17,9 +9,8 @@ const DIFFICULTY_LABEL: Record<Difficulty, string> = {
   hard: "Hard",
 };
 
-export function QuizRow({ quiz }: { quiz: DashboardQuiz }) {
-  const created = new Date(quiz.created_at);
-  const dateLabel = created.toLocaleDateString("en-GB", {
+export function QuizRow({ quiz }: { quiz: HistoryEntry }) {
+  const dateLabel = new Date(quiz.createdAt).toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
