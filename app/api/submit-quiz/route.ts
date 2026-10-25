@@ -11,17 +11,18 @@ export const maxDuration = 30;
 export async function POST(request: Request) {
   const correlationId = newCorrelationId();
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return apiError("UNAUTHENTICATED", "Sign in to submit a quiz.", correlationId);
-  }
-
-  const limit = rateLimit(`submit:${user.id}:${getClientIp(request.headers)}`, 30, 60 * 1000);
+  const limit = rateLimit(
+    `submit:${getClientIp(request.headers)}`,
+    30,
+    60 * 1000,
+  );
   if (!limit.allowed) {
-    return apiError("RATE_LIMITED", "Too many requests, try again in 30 seconds.", correlationId);
+    return apiError(
+      "RATE_LIMITED",
+      "Too many requests, try again in 30 seconds.",
+      correlationId,
+      limit.retryAfterSeconds,
+    );
   }
 
   const json = await request.json().catch(() => null);
@@ -31,7 +32,9 @@ export async function POST(request: Request) {
   }
   const { quizId, answers } = parsed.data;
 
-  // RLS hides quizzes owned by anyone else, so a missing row is a 404 either way.
+  const supabase = await createClient();
+
+  // RLS allows public reads; a missing or unknown UUID is a 404.
   const { data: quiz, error: quizError } = await supabase
     .from("quizzes")
     .select("id")
@@ -70,7 +73,6 @@ export async function POST(request: Request) {
     .from("attempts")
     .insert({
       quiz_id: quizId,
-      user_id: user.id,
       score,
       total_questions: total,
       answers,
