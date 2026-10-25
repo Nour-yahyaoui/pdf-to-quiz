@@ -17,6 +17,23 @@ const PER_HOUR_LIMIT = 30;
 
 export async function POST(request: Request) {
   const correlationId = newCorrelationId();
+
+  // Catch-all so an unexpected failure (configuration, client creation, a
+  // third-party throwing outside an inner guard) never becomes an opaque
+  // empty 500 — the client always receives a correlated JSON error.
+  try {
+    return await handlePost(request, correlationId);
+  } catch (error) {
+    console.error(`[${correlationId}] unhandled generate-quiz error:`, error);
+    return apiError(
+      "INTERNAL_ERROR",
+      "Something went wrong while building your quiz. Please try again.",
+      correlationId,
+    );
+  }
+}
+
+async function handlePost(request: Request, correlationId: string) {
   const ip = getClientIp(request.headers);
 
   const minute = rateLimit(`generate:min:${ip}`, PER_MINUTE_LIMIT, 60 * 1000);

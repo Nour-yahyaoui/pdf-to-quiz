@@ -11,6 +11,20 @@ export const maxDuration = 30;
 export async function POST(request: Request) {
   const correlationId = newCorrelationId();
 
+  // Never let an unexpected throw escape as an opaque empty 500.
+  try {
+    return await handlePost(request, correlationId);
+  } catch (error) {
+    console.error(`[${correlationId}] unhandled submit-quiz error:`, error);
+    return apiError(
+      "INTERNAL_ERROR",
+      "Something went wrong while saving your answers. Please try again.",
+      correlationId,
+    );
+  }
+}
+
+async function handlePost(request: Request, correlationId: string) {
   const limit = rateLimit(
     `submit:${getClientIp(request.headers)}`,
     30,
