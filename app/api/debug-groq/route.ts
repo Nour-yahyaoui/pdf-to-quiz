@@ -15,7 +15,10 @@ export const runtime = "nodejs";
 export const maxDuration = 30;
 
 export async function GET(request: Request) {
-  const wantsJson = new URL(request.url).searchParams.get("format") === "json";
+  const requestUrl = new URL(request.url);
+  const wantsJson = requestUrl.searchParams.get("format") === "json";
+  // fast=1 skips the live Groq/Supabase calls and returns instantly.
+  const fast = requestUrl.searchParams.get("fast") === "1";
   const ip = getClientIp(request.headers);
   const limit = rateLimit(`debug:min:${ip}`, 5, 60 * 1000);
   if (!limit.allowed) {
@@ -53,6 +56,23 @@ export async function GET(request: Request) {
     extractorLoaded: typeof extractPdfText === "function",
   };
 
+  if (fast) {
+    checks.groq = { ok: null, skipped: "fast mode — live call skipped" };
+    checks.supabase = { ok: null, skipped: "fast mode — live call skipped" };
+  } else {
+    await runLiveChecks(checks, groqKey);
+  }
+
+  if (wantsJson) {
+    return Response.json(checks, { headers: { "Cache-Control": "no-store" } });
+  }
+  return htmlResponse(200, checks);
+}
+
+async function runLiveChecks(
+  checks: Record<string, unknown>,
+  groqKey: string,
+): Promise<void> {
   // 3. Live, minimal Groq call on the fast fallback model (15s ceiling).
   if (groqKey.length > 0) {
     try {
@@ -101,11 +121,6 @@ export async function GET(request: Request) {
       message: error instanceof Error ? error.message.slice(0, 150) : "unknown error",
     };
   }
-
-  if (wantsJson) {
-    return Response.json(checks, { headers: { "Cache-Control": "no-store" } });
-  }
-  return htmlResponse(200, checks);
 }
 
 function esc(value: unknown): string {
