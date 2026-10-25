@@ -108,19 +108,37 @@ export async function GET(request: Request) {
   return htmlResponse(200, checks);
 }
 
-function htmlResponse(status: number, body: unknown, retryAfterSeconds?: number) {
-  const json = JSON.stringify(body, null, 2);
-  const escaped = json
+function esc(value: unknown): string {
+  return String(value)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
+}
+
+/** Flatten the nested diagnostic object into semantic HTML rows. */
+function rows(prefix: string, value: unknown): string {
+  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, nested]) => rows(prefix ? `${prefix} · ${key}` : key, nested))
+      .join("");
+  }
+  return `<tr><th scope="row">${esc(prefix)}</th><td>${esc(JSON.stringify(value))}</td></tr>`;
+}
+
+function htmlResponse(status: number, body: unknown, retryAfterSeconds?: number) {
   const headers: Record<string, string> = { "Cache-Control": "no-store" };
   if (retryAfterSeconds) headers["Retry-After"] = String(retryAfterSeconds);
-  return new Response(
-    `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>PDF to Quiz — diagnostics</title>` +
-      `<style>body{font:14px/1.5 ui-monospace,Menlo,Consolas,monospace;margin:2rem;background:#f7f5f0;color:#1a1a2e}` +
-      `h1{font:600 1.1rem system-ui,sans-serif}pre{white-space:pre-wrap;word-break:break-word}</style></head>` +
-      `<body><h1>PDF to Quiz — production diagnostics (temporary)</h1><pre>${escaped}</pre></body></html>`,
-    { status, headers: { ...headers, "Content-Type": "text/html; charset=utf-8" } },
-  );
+  const html =
+    `<!doctype html><html lang="en"><head><meta charset="utf-8">` +
+    `<meta name="robots" content="noindex"><title>PDF to Quiz diagnostics</title></head>` +
+    `<body style="font-family:system-ui,sans-serif;margin:2rem;line-height:1.6">` +
+    `<h1>PDF to Quiz production diagnostics</h1>` +
+    `<p>Temporary read-only health check. No secret values are shown.</p>` +
+    `<table border="1" cellpadding="8" style="border-collapse:collapse">` +
+    `<thead><tr><th>Check</th><th>Result</th></tr></thead><tbody>${rows("", body)}</tbody></table>` +
+    `</body></html>`;
+  return new Response(html, {
+    status,
+    headers: { ...headers, "Content-Type": "text/html; charset=utf-8" },
+  });
 }
